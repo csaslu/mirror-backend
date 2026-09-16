@@ -1,0 +1,22 @@
+server:
+  host:
+  port: 8000
+log:
+  file:
+    all: "logs/app.log"
+    err: "logs/err.log"
+  max_size: 5
+  max_backups: 100
+  max_age: 30
+  compress: true
+database:
+  host:
+  port:
+  user:
+  name:
+  pass:
+cache:
+  host:
+  port:
+  pass:
+  db: 0

@@ -15,6 +15,20 @@ var configRWMutex sync.RWMutex
 var Debug = false
 var signalStopChan chan struct{}
 
+// defaultsFor returns the fallback values for keys a deployment may omit.
+// They are registered as viper defaults (which explicit config values
+// override), so an empty `cache:` block cannot silently point Redis at port 0.
+func defaultsFor(cfg *viper.Viper) {
+	cfg.SetDefault("server.host", "0.0.0.0")
+	cfg.SetDefault("server.port", 8000)
+	cfg.SetDefault("database.host", "127.0.0.1")
+	cfg.SetDefault("database.port", 5432)
+	cfg.SetDefault("cache.host", "127.0.0.1")
+	cfg.SetDefault("cache.port", 6379)
+	cfg.SetDefault("web.dir", "web")
+	cfg.SetDefault("mirror.cors_allow_origins", []string{})
+}
+
 // load is constructor of static config
 func load() (*viper.Viper, error) {
 	// Init viper
@@ -28,6 +42,10 @@ func load() (*viper.Viper, error) {
 
 	// Set config file
 	cfg.SetConfigName("config")
+
+	// Register fallbacks first: viper only uses a default when the key is
+	// absent from the config file.
+	defaultsFor(cfg)
 
 	// Read the config file
 	if err := cfg.ReadInConfig(); err != nil {

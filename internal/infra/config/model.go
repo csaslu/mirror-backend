@@ -28,4 +28,34 @@ type StaticConfig struct {
 		Pass string `mapstructure:"pass"`
 		DB   int    `mapstructure:"db"`
 	} `mapstructure:"cache"`
+	Web struct {
+		// Dir is the directory holding the built frontend, served at "/".
+		// Relative paths are resolved against the working directory.
+		Dir string `mapstructure:"dir"`
+	} `mapstructure:"web"`
+	Mirror struct {
+		// Proxy enables serving mirror content and directory listings through
+		// the caching proxy at /{key}/...
+		Proxy bool `mapstructure:"proxy"`
+
+		// CacheAddr is host:port of the httpcached instance.
+		CacheAddr string `mapstructure:"cache_addr"`
+
+		// CacheHost is the Host header used when talking to the cache, which
+		// must appear in its `sites[].hosts` list. Defaults to CacheAddr.
+		CacheHost string `mapstructure:"cache_host"`
+
+		// CacheScheme is http or https.
+		CacheScheme string `mapstructure:"cache_scheme"`
+
+		// Host is the public hostname of this mirror site, used when building
+		// redirect locations that point back at us.
+		Host string `mapstructure:"host"`
+
+		// CORSAllowOrigins lists browser origins allowed to call the API from
+		// another host, which is the case when the frontend runs on the Nuxt
+		// dev server. Same-origin deployments need nothing here; never use "*"
+		// for a site that serves credentials.
+		CORSAllowOrigins []string `mapstructure:"cors_allow_origins"`
+	} `mapstructure:"mirror"`
 }

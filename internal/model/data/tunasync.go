@@ -1,5 +1,11 @@
 package data
 
+// TunaSync is one mirror entry of a status document.
+//
+// It is the neutral form every upstream decoder produces: the tunasync schema
+// happens to match it field for field, and other formats (see the USTC decoder)
+// are mapped onto it. Size carries both the human-readable original and, when
+// the document provides it, an exact byte count.
 type TunaSync struct {
 	Name           string `json:"name"`
 	IsMaster       bool   `json:"is_master"`
@@ -14,4 +20,7 @@ type TunaSync struct {
 	NextScheduleTS int64  `json:"next_schedule_ts"`
 	Upstream       string `json:"upstream"`
 	Size           string `json:"size"`
+
+	// SizeBytes is set only by decoders whose document states an exact size.
+	SizeBytes *int64 `json:"-"`
 }

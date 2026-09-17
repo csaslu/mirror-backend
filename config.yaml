@@ -16,7 +16,24 @@ database:
   name:
   pass:
 cache:
-  host:
-  port:
+  host: 127.0.0.1
+  port: 6379
   pass:
   db: 0
+web:
+  # Directory holding the built frontend (Nuxt static output), served at "/".
+  # Relative paths are resolved against the working directory.
+  dir: "web"
+mirror:
+  # Serve mirror content at /{key}/... through the caching proxy.
+  proxy: true
+  # host:port of the httpcached instance (see docs/plan-mirror-serving.md).
+  cache_addr: "127.0.0.1:8001"
+  # Host header used towards the cache; must be listed in its sites[].hosts.
+  # Leave empty to use cache_addr.
+  cache_host: ""
+  # http or https. The cache is normally reached over plain HTTP on loopback.
+  cache_scheme: "http"
+  # Public hostname of this mirror site, used when rewriting redirects that
+  # point back at us. Leave empty during development.
+  host: ""

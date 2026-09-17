@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"mirror/internal/adapter"
+	"mirror/internal/cli"
 	"mirror/internal/cron"
 	"mirror/internal/handler"
 	"mirror/internal/infra/cache"
+	"mirror/internal/infra/cacheproxy"
 	"mirror/internal/infra/config"
 	"mirror/internal/infra/database"
 	"mirror/internal/infra/logger"
@@ -13,36 +13,48 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
+
 	// Embed IANA tz database so time.LoadLocation works in slim containers without system tzdata
 	_ "time/tzdata"
-
-	"go.gh.ink/toolbox/pointer"
-	"go.uber.org/zap"
 )
 
 func main() {
-	// Load static config
+	// Static config first: every step below reads it.
 	config.Init()
 	defer config.Cleanup()
 
-	// Init logger
 	logger.Init()
 	defer logger.Cleanup()
 
-	r, e := adapter.ParseStatus("https://pypi.mirrors.tuna.tsinghua.edu.cn", "pypi")
-	fmt.Println(e)
-	fmt.Println(pointer.SafeDeref(r.Status), pointer.SafeDeref(r.Size), pointer.SafeDeref(r.LastUpdate))
-	syscall.Exit(0)
-
-	// Init cache
-	cache.Init()
-	defer cache.Cleanup()
+	// A maintenance command (`-dump-cache-config`, `-drop-caches`) replaces the
+	// server run entirely; it is executed below and the process then stops.
+	command := cli.Parse()
 
 	// Init database
-	database.Init()
-	defer database.Cleanup()
+	if command == nil || command.Requires(cli.NeedsDatabase) {
+		database.Init()
+		defer database.Cleanup()
+	}
 
-	// Init cron
+	// Init Redis-backed cache
+	if command == nil || command.Requires(cli.NeedsCache) {
+		cache.Init()
+		defer cache.Cleanup()
+	}
+
+	if command != nil {
+		if err := command.Run(); err != nil {
+			logger.L.Fatal("maintenance command failed", zap.Error(err))
+		}
+		return
+	}
+
+	// Client for the caching proxy that fronts every mirror directory.
+	cacheproxy.Init()
+
+	// Background refresh of upstream sync status.
 	cron.Init()
 
 	// Run main server

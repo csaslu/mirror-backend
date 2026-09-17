@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	fiberzap "github.com/gofiber/contrib/v3/zap"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	recoverer "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/utils/v2"
@@ -66,6 +67,31 @@ func fiberApp() *fiber.App {
 	// Use customer header middleware
 	app.Use(middleware.CustomHeader)
 
+	// Allow a separately hosted frontend (the Nuxt dev server, or a frontend on
+	// its own domain) to call the API. Off by default: a same-origin deployment
+	// needs no CORS at all.
+	if origins := config.Get().Mirror.CORSAllowOrigins; len(origins) > 0 {
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: origins,
+			AllowMethods: []string{
+				fiber.MethodGet, fiber.MethodHead, fiber.MethodOptions,
+			},
+			AllowHeaders: []string{
+				fiber.HeaderAccept, fiber.HeaderContentType,
+				fiber.HeaderIfNoneMatch, fiber.HeaderIfModifiedSince,
+				fiber.HeaderRange, fiber.HeaderAuthorization,
+			},
+			// The listing API is ETag-based; browsers must be allowed to read
+			// the validator or every poll re-downloads the payload.
+			ExposeHeaders: []string{
+				fiber.HeaderETag, "X-Cache", fiber.HeaderAcceptRanges,
+			},
+			MaxAge: 600,
+		}))
+
+		logger.L.Info("CORS enabled for the API", zap.Strings("origins", origins))
+	}
+
 	// Ping test router handler
 	app.All("/ping", func(c fiber.Ctx) error {
 		return model.RespSuccess(c, struct {
@@ -77,8 +103,12 @@ func fiberApp() *fiber.App {
 		})
 	})
 
-	// Root info router handler
+	// Root info router handler. This is the JSON fallback for API tooling; the
+	// mirrored-frontend static handler registered later owns "/" for browsers.
 	app.All("/", func(c fiber.Ctx) error {
+		if c.Accepts(fiber.MIMETextHTML) != "" {
+			return c.Next()
+		}
 		return model.RespSuccess(c, xtype.MS[string]{
 			"powered_by":   meta.PoweredByText,
 			"tech_support": "Communication and Software Association of Shanghai Lida University",
@@ -87,6 +117,14 @@ func fiberApp() *fiber.App {
 
 	// Register global routes
 	Register(app)
+
+	// Serve mirror content at "/{key}/..." through the caching proxy. Must come
+	// before the static handler so mirror paths are not swallowed by the SPA
+	// fallback, and after the API routes so /api stays JSON.
+	RegisterMirrorProxy(app)
+
+	// Serve the built frontend at "/" (reads config `web.dir` at startup)
+	RegisterStatic(app)
 
 	// Not found router handler
 	app.Use(func(c fiber.Ctx) error {

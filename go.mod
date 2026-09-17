@@ -22,6 +22,7 @@ require (
 	go.gh.ink/toolbox/fiber/v3 v3.0.0
 	go.gh.ink/xormzap v1.0.2
 	go.uber.org/zap v1.28.0
+	golang.org/x/net v0.59.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	xorm.io/xorm v1.4.1
 )
@@ -58,7 +59,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	xorm.io/builder v0.3.13 // indirect

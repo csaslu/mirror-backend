@@ -5,46 +5,65 @@ import (
 	"strings"
 )
 
-// UnifySize converts a size string (e.g., "10M", "1.5G")
-// to its equivalent size in bytes as an int64.
-func UnifySize(size string) int64 {
-	// Pre-process of letter capital
-	size = strings.ToUpper(size)
-	result := int64(0)
+// sizeUnits maps a normalised unit suffix to its multiplier in bytes.
+// TunaSync reports sizes such as "69.98G", "549G" or "1.39T".
+var sizeUnits = map[string]float64{
+	"":  1,
+	"B": 1,
 
-	switch {
-	case strings.HasSuffix(size, "B"):
-		sizeF64, err := strconv.ParseFloat(strings.TrimSuffix(size, "B"), 64)
-		if err != nil {
-			return 0
+	"K":   1 << 10,
+	"KB":  1 << 10,
+	"KIB": 1 << 10,
+
+	"M":   1 << 20,
+	"MB":  1 << 20,
+	"MIB": 1 << 20,
+
+	"G":   1 << 30,
+	"GB":  1 << 30,
+	"GIB": 1 << 30,
+
+	"T":   1 << 40,
+	"TB":  1 << 40,
+	"TIB": 1 << 40,
+
+	"P":   1 << 50,
+	"PB":  1 << 50,
+	"PIB": 1 << 50,
+}
+
+// UnifySize converts a human readable size (e.g. "10M", "1.5 GB", "549G",
+// "1024") into bytes. Unknown or malformed input yields 0, which callers
+// render as "unknown size".
+func UnifySize(size string) int64 {
+	// Normalise: uppercase, drop inner spaces and a trailing quality suffix.
+	size = strings.ToUpper(strings.TrimSpace(size))
+	size = strings.ReplaceAll(size, " ", "")
+
+	// Split the numeric prefix from the unit suffix.
+	index := 0
+	for index < len(size) {
+		c := size[index]
+		if (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+' {
+			index++
+			continue
 		}
-		result = int64(sizeF64)
-	case strings.HasSuffix(size, "K"):
-		sizeF64, err := strconv.ParseFloat(strings.TrimSuffix(size, "K"), 64)
-		if err != nil {
-			return 0
-		}
-		result = int64(sizeF64 * 1024)
-	case strings.HasSuffix(size, "M"):
-		sizeF64, err := strconv.ParseFloat(strings.TrimSuffix(size, "M"), 64)
-		if err != nil {
-			return 0
-		}
-		result = int64(sizeF64 * 1024 * 1024)
-	case strings.HasSuffix(size, "G"):
-		sizeF64, err := strconv.ParseFloat(strings.TrimSuffix(size, "G"), 64)
-		if err != nil {
-			return 0
-		}
-		result = int64(sizeF64 * 1024 * 1024 * 1024)
-	case strings.HasSuffix(size, "T"):
-		sizeF64, err := strconv.ParseFloat(strings.TrimSuffix(size, "T"), 64)
-		if err != nil {
-			return 0
-		}
-		result = int64(sizeF64 * 1024 * 1024 * 1024 * 1024)
-	default:
+		break
+	}
+
+	value := size[:index]
+	unit := size[index:]
+
+	// A bare number is bytes, and an unknown unit means we cannot tell.
+	multiplier, ok := sizeUnits[unit]
+	if !ok {
 		return 0
 	}
-	return result
+
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil || parsed < 0 {
+		return 0
+	}
+
+	return int64(parsed * multiplier)
 }

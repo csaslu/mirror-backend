@@ -4,6 +4,7 @@ import (
 	"io"
 	"mirror/internal/infra/config"
 	"os"
+	"sync"
 
 	"github.com/goccy/go-json"
 	"go.uber.org/zap"
@@ -11,9 +12,27 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var L *zap.Logger
+// L is the global logger. It is always safe to use: before Init runs it is a
+// no-op logger, so a stray log line can never panic with a nil dereference
+// (Packages that log before Init, tests, or a reordered startup would).
+var L = zap.NewNop()
+
+var initOnce sync.Once
+
+// ensureReady makes L usable without clobbering a logger set by Init. It is a
+// safety net for tests and for packages imported before main starts logging.
+func ensureReady() {
+	initOnce.Do(func() {
+		if L == nil {
+			L = zap.NewNop()
+		}
+	})
+}
 
 func Init() {
+	// Mark the one-time initialisation done so ensureReady stops substituting.
+	initOnce.Do(func() {})
+
 	// Set log level
 	var level zapcore.Level
 	if config.Debug {
@@ -100,5 +119,7 @@ func Init() {
 }
 
 func Cleanup() {
-	_ = L.Sync()
+	if L != nil {
+		_ = L.Sync()
+	}
 }

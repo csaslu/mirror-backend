@@ -29,6 +29,7 @@ func defaultsFor(cfg *viper.Viper) {
 	cfg.SetDefault("mirror.cors_allow_origins", []string{})
 	cfg.SetDefault("mirror.cache_dir", "./cache_data")
 	cfg.SetDefault("mirror.cache_max_size", "200GB")
+	cfg.SetDefault("mirror.cache_config", "")
 }
 
 // load is constructor of static config

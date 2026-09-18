@@ -55,6 +55,13 @@ type StaticConfig struct {
 		// CacheMaxSize is the proxy's soft disk cap (e.g. "200GB").
 		CacheMaxSize string `mapstructure:"cache_max_size"`
 
+		// CacheConfig is the path of the caching proxy's configuration file.
+		// Setting it makes -dump-cache-config default to that path, and makes
+		// startup warn when the file is missing. It is never created
+		// automatically: a mistyped path should be visible, not silently
+		// materialised.
+		CacheConfig string `mapstructure:"cache_config"`
+
 		// Host is the public hostname of this mirror site, used when building
 		// redirect locations that point back at us.
 		Host string `mapstructure:"host"`

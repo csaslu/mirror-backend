@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"mirror/internal/cli"
 	"mirror/internal/cron"
 	"mirror/internal/handler"
@@ -9,6 +11,7 @@ import (
 	"mirror/internal/infra/config"
 	"mirror/internal/infra/database"
 	"mirror/internal/infra/logger"
+	"mirror/internal/proxyconfig"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,7 +33,19 @@ func main() {
 
 	// A maintenance command (`-dump-cache-config`, `-drop-caches`) replaces the
 	// server run entirely; it is executed below and the process then stops.
-	command := cli.Parse()
+	command, err := cli.Parse()
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			// -h/-help: the usage text has been printed, and asking for help is
+			// not a failure.
+			os.Exit(0)
+		}
+
+		// A bad command line is a failure, and the exit code has to say so:
+		// scripts and service managers decide what to do based on it.
+		logger.L.Fatal("invalid command line", zap.Error(err))
+		os.Exit(2)
+	}
 
 	// Init database
 	if command == nil || command.Requires(cli.NeedsDatabase) {
@@ -53,6 +68,14 @@ func main() {
 
 	// Client for the caching proxy that fronts every mirror directory.
 	cacheproxy.Init()
+
+	// The proxy's configuration file is generated, never created implicitly: a
+	// missing one would make every mirror request fail with an unexplained 502,
+	// so say so once at startup. A mistyped path stays visible instead of being
+	// materialised.
+	if err := proxyconfig.Check(config.Get().Mirror.CacheConfig); err != nil {
+		logger.L.Warn("caching proxy configuration is not in place", zap.Error(err))
+	}
 
 	// Background refresh of upstream sync status.
 	cron.Init()

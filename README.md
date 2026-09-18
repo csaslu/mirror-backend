@@ -88,6 +88,7 @@ With `database.*` left empty the process exits with an explicit log line
 | `mirror.cache_scheme`       | `http`               | Scheme used towards the cache                                  |
 | `mirror.cache_dir`          | `./cache_data`       | Where the caching proxy stores blobs; put it on the big disk    |
 | `mirror.cache_max_size`     | `200GB`              | The proxy's soft disk cap, above which it evicts                |
+| `mirror.cache_config`       | empty                | Path of the proxy's config file; lets `-dump-cache-config` default to it and makes startup warn when it is missing |
 | `mirror.host`               | empty                | Public hostname of this site; used to build the proxy's host list |
 | `mirror.cors_allow_origins` | empty                | Browser origins allowed to call the API cross-origin; needs the dev server's port when using `pnpm dev` |
 

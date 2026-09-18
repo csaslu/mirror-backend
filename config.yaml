@@ -38,6 +38,11 @@ mirror:
   # Both are written into the generated proxy configuration.
   cache_dir: "./cache_data"
   cache_max_size: "200GB"
+  # Path of the caching proxy's configuration file. Setting it lets
+  # `-dump-cache-config` run without an argument and makes startup warn when the
+  # file is missing. It is never created for you: create the directory and run
+  # the command.
+  # cache_config: "../proxy/config.yaml"
   # Public hostname of this mirror site, used when rewriting redirects that
   # point back at us. Leave empty during development.
   host: ""

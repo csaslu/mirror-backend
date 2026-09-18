@@ -74,9 +74,12 @@ func Write(path string) error {
 		return nil
 	}
 
+	// The directory must already exist. Creating it would hide a mistyped path,
+	// and the file is read by another process whose working directory we cannot
+	// verify from here.
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("creating %s: %w", dir, err)
+		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+			return fmt.Errorf("directory %s does not exist (create it first, or point mirror.cache_config at an existing one)", dir)
 		}
 	}
 
@@ -89,6 +92,28 @@ func Write(path string) error {
 
 	if err := os.Rename(temp, path); err != nil {
 		return fmt.Errorf("replacing %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// Check reports whether the proxy's configuration file exists at path.
+//
+// It exists so startup can tell an operator that the file is missing instead of
+// letting every mirror request fail with an unexplained 502. The caller decides
+// what to do with the warning: the file is never created here.
+func Check(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil
+	}
+
+	info, err := os.Stat(path)
+	switch {
+	case err != nil:
+		return fmt.Errorf("%s does not exist: run `mirror-backend -dump-cache-config` to write it, then reload the proxy (SIGHUP)", path)
+	case info.IsDir():
+		return fmt.Errorf("%s is a directory, not the proxy's configuration file", path)
 	}
 
 	return nil

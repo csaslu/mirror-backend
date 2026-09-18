@@ -297,6 +297,19 @@ case "${1:-up}" in
     log "generating the proxy configuration from the database"
     (cd "$BACKEND_DIR" && go run . -dump-cache-config "$PROXY_DIR/config.yaml" >/dev/null)
 
+    # A process is not the same as a working proxy. A leftover instance bound to
+    # a different port (or one whose working directory has been removed) would
+    # make the branch below send SIGHUP to something that never answers, and the
+    # only symptom would be "the proxy is not answering yet".
+    if pgrep -f "$HTTPCACHED_BIN" >/dev/null 2>&1; then
+      if ! curl -fsS --max-time 2 "http://127.0.0.1:$PROXY_PORT/_cache/stats" >/dev/null 2>&1; then
+        warn "a process matches $HTTPCACHED_BIN but nothing answers on 127.0.0.1:$PROXY_PORT"
+        warn "stopping the stale instance so a working one can start"
+        pkill -f "$HTTPCACHED_BIN" >/dev/null 2>&1 || true
+        sleep 1
+      fi
+    fi
+
     if pgrep -f "$HTTPCACHED_BIN" >/dev/null 2>&1; then
       # A running proxy re-reads its routes on SIGHUP and keeps its cached data.
       log "reloading the running proxy"
@@ -389,8 +402,10 @@ PYAUDIT
     require_docker
     docker ps -a --filter "name=$PG_CONTAINER" --filter "name=$REDIS_CONTAINER" \
       --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-    if pgrep -f "$HTTPCACHED_BIN" >/dev/null 2>&1; then
+    if curl -fsS --max-time 2 "http://127.0.0.1:$PROXY_PORT/_cache/stats" >/dev/null 2>&1; then
       echo "httpcached: running on 127.0.0.1:$PROXY_PORT"
+    elif pgrep -f "$HTTPCACHED_BIN" >/dev/null 2>&1; then
+      echo "httpcached: a process exists but nothing answers on 127.0.0.1:$PROXY_PORT"
     else
       echo "httpcached: stopped"
     fi

@@ -115,9 +115,17 @@ func RegisterStatic(app *fiber.App) {
 		}
 
 		// 4. A client-side route has no file on disk: hand over the SPA shell.
-		//    A trailing slash means the visitor asked for a directory, so that
-		//    still requires a real index file (step 2).
-		if !strings.HasSuffix(c.Path(), "/") {
+		//
+		//    A trailing slash is a page route too, not only a directory: the
+		//    browser adds one when a URL is typed or pasted, so
+		//    "/mirror/pypi/web/" must render the same page as
+		//    "/mirror/pypi/web". Directory requests that do have an index file
+		//    were already served in step 2, so reaching here means there is no
+		//    such file.
+		//
+		//    Only a path inside a served-with-files prefix is refused: those are
+		//    asset namespaces, and answering them with HTML hides a real 404.
+		if !isAssetPath(c.Path()) {
 			for _, candidate := range spaFallbacks {
 				if isRegularFile(fsys, candidate) {
 					return sendAsset(c, fsys, candidate)
@@ -129,6 +137,22 @@ func RegisterStatic(app *fiber.App) {
 	})
 
 	logger.L.Info("frontend static files mounted", zap.String("dir", root))
+}
+
+// isAssetPath reports whether a path belongs to a namespace that is served as
+// files rather than as pages.
+//
+// These are the paths whose misses must stay 404: returning the SPA shell for
+// them would make a broken asset look like a working page, and a client parsing
+// the response as JSON would fail on HTML.
+func isAssetPath(requestPath string) bool {
+	for _, prefix := range []string{apiPrefix, immutableAssetPrefix} {
+		if requestPath == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(requestPath, prefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // sendAsset streams one file from the frontend directory with cache headers

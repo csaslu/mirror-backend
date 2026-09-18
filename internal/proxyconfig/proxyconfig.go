@@ -15,9 +15,11 @@ package proxyconfig
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -130,12 +132,27 @@ func Render() (string, error) {
 	}
 	sort.Slice(skipped, func(i, j int) bool { return skipped[i].Key < skipped[j].Key })
 
+	storageDir := strings.TrimSpace(cfg.Mirror.CacheDir)
+	if storageDir == "" {
+		storageDir = "./cache_data"
+	}
+
+	maxSize := strings.TrimSpace(cfg.Mirror.CacheMaxSize)
+	if maxSize == "" {
+		maxSize = "200GB"
+	}
+
+	// The listener is derived from the address the backend dials, so the two
+	// cannot drift apart: the proxy would otherwise come up on a port nothing
+	// talks to.
+	listenHost, listenPort := splitListenAddress(cfg.Mirror.CacheAddr)
+
 	data := templateData{
-		ListenHost:  "127.0.0.1",
-		ListenPort:  8001,
+		ListenHost:  listenHost,
+		ListenPort:  listenPort,
 		Hosts:       hosts,
-		StorageDir:  "./cache_data",
-		MaxSize:     "200GB",
+		StorageDir:  storageDir,
+		MaxSize:     maxSize,
 		Routes:      routes,
 		Skipped:     skipped,
 		GeneratedAt: timeNow(),
@@ -152,6 +169,38 @@ func Render() (string, error) {
 	)
 
 	return buffer.String(), nil
+}
+
+// splitListenAddress turns the cache address the backend dials into the listen
+// host and port written into the proxy configuration.
+//
+// A malformed value falls back to loopback on the usual port rather than
+// producing a configuration the proxy cannot bind.
+func splitListenAddress(addr string) (string, int) {
+	const (
+		defaultHost = "127.0.0.1"
+		defaultPort = 8001
+	)
+
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return defaultHost, defaultPort
+	}
+
+	host, portText, err := net.SplitHostPort(addr)
+	if err != nil {
+		return defaultHost, defaultPort
+	}
+	if host == "" {
+		host = defaultHost
+	}
+
+	port, err := strconv.Atoi(portText)
+	if err != nil || port <= 0 || port > 65535 {
+		return host, defaultPort
+	}
+
+	return host, port
 }
 
 // uniqueStrings keeps the first occurrence of each value, preserving order.

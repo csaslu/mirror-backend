@@ -27,6 +27,8 @@ func defaultsFor(cfg *viper.Viper) {
 	cfg.SetDefault("cache.port", 6379)
 	cfg.SetDefault("web.dir", "web")
 	cfg.SetDefault("mirror.cors_allow_origins", []string{})
+	cfg.SetDefault("mirror.cache_dir", "./cache_data")
+	cfg.SetDefault("mirror.cache_max_size", "200GB")
 }
 
 // load is constructor of static config

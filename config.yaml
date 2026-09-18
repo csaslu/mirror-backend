@@ -34,6 +34,10 @@ mirror:
   cache_host: ""
   # http or https. The cache is normally reached over plain HTTP on loopback.
   cache_scheme: "http"
+  # Where the caching proxy stores cached objects, and its soft disk cap.
+  # Both are written into the generated proxy configuration.
+  cache_dir: "./cache_data"
+  cache_max_size: "200GB"
   # Public hostname of this mirror site, used when rewriting redirects that
   # point back at us. Leave empty during development.
   host: ""

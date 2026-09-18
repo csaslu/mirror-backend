@@ -84,6 +84,8 @@ curl -s localhost:8000/api/v1/mirrors.json | head -c 400
 | `mirror.cache_addr`         | `127.0.0.1:8001`     | httpcached 的地址                                            |
 | `mirror.cache_host`         | 空（用 `cache_addr`）| 访问缓存时的 Host 头，必须在其 `sites[].hosts` 中             |
 | `mirror.cache_scheme`       | `http`               | 与缓存通信的协议                                              |
+| `mirror.cache_dir`          | `./cache_data`       | 缓存块存放目录；应放在大容量磁盘上                              |
+| `mirror.cache_max_size`     | `200GB`              | 缓存软上限，超过后开始淘汰                                     |
 | `mirror.host`               | 空                   | 本站对外域名；用于生成代理 Host 列表                           |
 | `mirror.cors_allow_origins` | 空                   | 允许跨源调用 API 的浏览器来源；`pnpm dev` 时需放行其端口       |
 

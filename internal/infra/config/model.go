@@ -48,6 +48,13 @@ type StaticConfig struct {
 		// CacheScheme is http or https.
 		CacheScheme string `mapstructure:"cache_scheme"`
 
+		// CacheDir is where the caching proxy stores its blobs. Put it on the
+		// disk that holds the artefacts.
+		CacheDir string `mapstructure:"cache_dir"`
+
+		// CacheMaxSize is the proxy's soft disk cap (e.g. "200GB").
+		CacheMaxSize string `mapstructure:"cache_max_size"`
+
 		// Host is the public hostname of this mirror site, used when building
 		// redirect locations that point back at us.
 		Host string `mapstructure:"host"`
